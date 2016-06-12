@@ -1,0 +1,7 @@
+{
+  "name": "getbitrate",
+  "versoin": "0.1.0",
+  "dependencies": {
+    "minimist": "^1.2.0"
+  }
+}
