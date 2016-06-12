@@ -270,7 +270,7 @@ function init () {
 
   setTimeout(function () {
     clearInterval(intervalId)
-    childProcess.kill('SIGSTOP')
+    childProcess.kill('SIGKILL')
   }, totalTime)
 }
 
