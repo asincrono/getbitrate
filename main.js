@@ -18,6 +18,16 @@ const CURL_ARGS = ['-s', '-o', '/dev/null', '-w', '"%{speed_download}"']
 
 const NET_IFACES = os.networkInterfaces()
 
+function cleanLines (lines) {
+  let cleanLines = []
+  let cleanLine
+  lines.forEach((line, idx, arr) => {
+    cleanLine = line.replace(/^\s+/, '').replace(/\s+/, ' ').replace(/\s+$/, '')
+    cleanLines.push(cleanLine)
+  })
+  return cleanLines
+}
+
 function getBytes (device, platform, callback) {
   switch (platform) {
     case 'linux':
@@ -27,14 +37,15 @@ function getBytes (device, platform, callback) {
         } else {
           // parse the data
           let lines = data.split('\n')
+          // stupid lines begin with ' '
+          lines = cleanLines(lines)
+          // not anymore muohoohoo
           let line = lines.filter((line, idx, arr) => {
             return line.startsWith(device)
           })[0]
 
           if (line) {
-            let values = line.split(/\s+/).filter((value, idx, arr) => {
-              return value.length > 0
-            })
+            let values = line.split(/\s+/)
             let bytesRx = values[1]
             let bytesTx = values[9]
             callback(null, parseInt(bytesRx, 10), parseInt(bytesTx, 10))
