@@ -21,7 +21,7 @@ const NET_IFACES = os.networkInterfaces()
 function getBytes (device, platform, callback) {
   switch (platform) {
     case 'linux':
-      fs.readFile(PROC_NET_DEV_PATH, (err, data) => {
+      fs.readFile(PROC_NET_DEV_PATH, 'utf8', (err, data) => {
         if (err) {
           callback(err)
         } else {
