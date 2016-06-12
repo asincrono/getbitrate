@@ -27,7 +27,7 @@ function getBytes (device, platform, callback) {
         } else {
           // parse the data
           let lines = data.split('\n')
-          let line = lines.filer((line, idx, arr) => {
+          let line = lines.filter((line, idx, arr) => {
             return line.startsWith(device)
           })[0]
 
