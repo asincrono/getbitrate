@@ -95,7 +95,7 @@ function truncDec (number, decimals) {
 
 class Bitrate {
   constructor (bps) {
-    this.bps = bps ? bps : 0
+    this.bps = bps || 0
   }
 
   fromBps (Bps) {
@@ -213,7 +213,7 @@ function init () {
     [user, pass] = userPass.split(':')
   }
 
-  startTransfer(url, user, pass)
+  let childProcess = startTransfer(url, user, pass)
   let timestamp = Date.now()
   let totalTime = maxPolls * pollInterval + 500
 
@@ -236,7 +236,6 @@ function init () {
         let elapsedSeconds = elapsedTime / 1000
 
         let bitrate = new Bitrate(bytesDiff * 8 / elapsedSeconds)
-        console.log('bitrate:', bitrate)
 
         if (units) {
           console.log(`bitrate (${units}):, ${bitrate.get(units)}`)
@@ -248,8 +247,10 @@ function init () {
       lastBytes = bytesRx
     })
   }, pollInterval)
+
   setTimeout(function () {
     clearInterval(intervalId)
+    childProcess.kill('SIGSTOP')
   }, totalTime)
 }
 
