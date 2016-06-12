@@ -4,7 +4,6 @@ const minimist = require('minimist')
 
 const argv = minimist(process.argv.slice(2))
 
-console.log(argv)
 const {
   execFile
 } = require('child_process')
@@ -20,7 +19,6 @@ const CURL_ARGS = ['-s', '-o', '/dev/null', '-w', '"%{speed_download}"']
 const NET_IFACES = os.networkInterfaces()
 
 function getBytes (device, platform, callback) {
-  console.log('Platform:', platform)
   switch (platform) {
     case 'linux':
       fs.readFile(PROC_NET_DEV_PATH, (err, data) => {
@@ -50,7 +48,6 @@ function getBytes (device, platform, callback) {
       let args = DARWIN_NETSTAT_ARGS.slice()
       args.push(device)
       execFile(DARWIN_NETSTAT_CMD, args, (err, stdout, stderr) => {
-        console.log('Darwin stdout:', stdout)
         if (err) {
           callback(err)
         } else {
@@ -87,7 +84,7 @@ function truncDec (number, decimals) {
 
 class Bitrate {
   constructor (bps) {
-    this.bps = bps ? 0 : bps
+    this.bps = bps ? bps : 0
   }
 
   fromBps (Bps) {
@@ -111,23 +108,23 @@ class Bitrate {
   }
 
   getBps () {
-    return (this / 8)
+    return (this.bps / 8)
   }
 
   getKbps () {
-    return (this / 1000)
+    return (this.bps / 1000)
   }
 
   getKBps () {
-    return (this / 8000)
+    return (this.bps / 8000)
   }
 
   getMbps () {
-    return (this / 1000000)
+    return (this.bps / 1000000)
   }
 
   getMBps () {
-    return (this / 8000000)
+    return (this.bps / 8000000)
   }
 
   get (unit) {
@@ -180,7 +177,7 @@ function init () {
     throw new Error(`"${device}" not recognized.`)
   }
 
-  let units = argv.s ? argv.s : argv.units
+  let units = argv.u ? argv.u : argv.units
 
   let url = argv.f ? argv.f : argv.file
   if (!url) {
@@ -200,7 +197,7 @@ function init () {
 
   let user
   let pass
-  let userPass = argv.u ? argv.u : argv.user
+  let userPass = argv.p ? argv.p : argv.user
   if (userPass) {
     [user, pass] = userPass.split(':')
   }
@@ -214,8 +211,6 @@ function init () {
     getBytes(device, platform, (err, bytesRx, bytesTx) => {
       if (err) console.error(err)
 
-      console.log('bytesRx:', bytesRx)
-      console.log('bytesTx:', bytesTx)
       let localTimestap = Date.now()
       let elapsedTime = localTimestap - timestamp
       timestamp = localTimestap
@@ -228,7 +223,10 @@ function init () {
         let bytesDiff = bytesRx - lastBytes
 
         let elapsedSeconds = elapsedTime / 1000
+
         let bitrate = new Bitrate(bytesDiff * 8 / elapsedSeconds)
+        console.log('bitrate:', bitrate)
+
         if (units) {
           console.log(`bitrate (${units}):, ${bitrate.get(units)}`)
         } else {
