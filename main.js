@@ -169,14 +169,20 @@ function startTransfer (url, user, pass) {
   let timestamp = Date.now()
 
   let childProcess = execFile(CURL_CMD, args, (err, stdout, stderr) => {
-    if (err) throw err
+    if (err) {
+      // nothing to see here as it's ok to get an error when proces killed.
+    } else {
+      let bytes = parseInt(stdout, 10)
+      let elapsedTime = Date.now() - timestamp
+      let elapsedSeconds = truncDec(elapsedTime / 1000, 3)
+      let bitrateBps = bytes / elapsedSeconds
 
-    let bytes = parseInt(stdout, 10)
-    let elapsedTime = Date.now() - timestamp
-    let elapsedSeconds = truncDec(elapsedTime / 1000, 3)
-    let bitrateBps = bytes / elapsedSeconds
-
-    console.log(`${url} transfer complete in ${elapsedSeconds} sencods ~ ${bitrateBps} B/s`)
+      console.log(`${url} transfer complete in ${elapsedSeconds} sencods ~ ${bitrateBps} B/s`)
+    }
+  })
+  childProcess.on('exit', (code, signal) => {
+    console.log('colde')
+    console.log(`curl task ended by ${signal}`)
   })
   return childProcess
 }
