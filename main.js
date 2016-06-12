@@ -168,7 +168,7 @@ function startTransfer (url, user, pass) {
 
   let timestamp = Date.now()
 
-  execFile(CURL_CMD, args, (err, stdout, stderr) => {
+  let childProcess = execFile(CURL_CMD, args, (err, stdout, stderr) => {
     if (err) throw err
 
     let bytes = parseInt(stdout, 10)
@@ -178,6 +178,7 @@ function startTransfer (url, user, pass) {
 
     console.log(`${url} transfer complete in ${elapsedSeconds} sencods ~ ${bitrateBps} B/s`)
   })
+  return childProcess
 }
 
 function init () {
