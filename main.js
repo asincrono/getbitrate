@@ -181,39 +181,50 @@ function startTransfer (url, user, pass) {
 }
 
 function init () {
+  // options: -d --device, -u --units, -r --resource, -t --time, -n --readings
+  // -p --precission
   let platform = os.platform()
-
+  // -d --d -device --device
   let device = argv.d ? argv.d : argv.device
+
   if (!NET_IFACES[device]) {
     throw new Error(`"${device}" not recognized.`)
   }
 
-  let units = argv.u ? argv.u : argv.units
-
-  let url = argv.f ? argv.f : argv.file
-  if (!url) {
+  // -r --r -resource --resource the url we will test our speed with.
+  let resource = argv.r ? argv.r : argv.resource
+  if (!resource) {
     throw new Error('You must supply a URL to test the speed.')
   }
 
+  // -t --t -time --time every each seconds we check the bitrate.
   let pollInterval = 1000 // default 1 second.
   if (argv.t || argv.time) {
     pollInterval = argv.t ? argv.t : argv.time
     pollInterval *= 1000 // seconds to millisecons.
   }
 
+  // -n --n -readings --readings the number of times we check the bitrate.
   let maxPolls = 10
   if (argv.n || argv.times) {
-    maxPolls = argv.n ? argv.n : argv.times
+    maxPolls = argv.n ? argv.n : argv.readings
   }
 
+  // -a --autenticate if 'user:pass' string is needed.
   let user
   let pass
-  let userPass = argv.p ? argv.p : argv.user
+  let userPass = argv.a ? argv.a : argv.autenticate
   if (userPass) {
     [user, pass] = userPass.split(':')
   }
 
-  let childProcess = startTransfer(url, user, pass)
+  // -u --u -units --units 'bps', 'Bps', 'Kbps', 'KBps', 'Mbps', 'MBps'
+  let units = argv.u ? argv.u : argv.units
+
+  // -p --precission number of decimals to show.
+  let precission = argv.p || argv.precission
+
+  let childProcess = startTransfer(resource, user, pass)
   let timestamp = Date.now()
   let totalTime = maxPolls * pollInterval + 500
 
@@ -236,11 +247,19 @@ function init () {
         let elapsedSeconds = elapsedTime / 1000
 
         let bitrate = new Bitrate(bytesDiff * 8 / elapsedSeconds)
-
+        let bitrateValue
         if (units) {
-          console.log(`bitrate (${units}):, ${bitrate.get(units)}`)
+          bitrateValue = bitrate.get(units)
+          if (precission) {
+            bitrateValue = truncDec(bitrateValue, precission)
+          }
+          console.log(`bitrate (${units}):, ${bitrateValue}`)
         } else {
-          console.log('bitrate (Bps):', bitrate.getBps())
+          let bitrateValue = bitrate.getBps()
+          if (precission) {
+            truncDec(bitrateValue, precission)
+          }
+          console.log('bitrate (Bps):', bitrateValue)
         }
       }
 
