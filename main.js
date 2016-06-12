@@ -85,6 +85,67 @@ function truncDec (number, decimals) {
   return Math.trunc(number * 10 * decimals) / (10 * decimals)
 }
 
+class Bitrate {
+  constructor (bps) {
+    this.bps = bps ? 0 : bps
+  }
+
+  fromBps (Bps) {
+    return new Bitrate(Bps * 8)
+  }
+
+  fromKbps (Kbps) {
+    return new Bitrate(Kbps * 1000)
+  }
+
+  fromKBps (KBps) {
+    return new Bitrate(KBps * 8000)
+  }
+
+  fromMbps (Mbps) {
+    return new Bitrate(Mbps * 1000000)
+  }
+
+  fromMBps (MBps) {
+    return new Bitrate(MBps * 8000000)
+  }
+
+  getBps () {
+    return (this / 8)
+  }
+
+  getKbps () {
+    return (this / 1000)
+  }
+
+  getKBps () {
+    return (this / 8000)
+  }
+
+  getMbps () {
+    return (this / 1000000)
+  }
+
+  getMBps () {
+    return (this / 8000000)
+  }
+
+  get (unit) {
+    switch (unit) {
+      case 'bps': return this.bps
+      case 'Bps': return this.getBps()
+      case 'Kbps': return this.getKbps()
+      case 'KBps': return this.getKBps()
+      case 'Mbps': return this.getMbps()
+      case 'MBps': return this.getMBps()
+      default: return this.bps
+    }
+  }
+  toString () {
+    return `${this.bps} b/s`
+  }
+}
+
 function startTransfer (url, user, pass) {
   let args = CURL_ARGS.slice()
   if (user) {
@@ -118,6 +179,8 @@ function init () {
   if (!NET_IFACES[device]) {
     throw new Error(`"${device}" not recognized.`)
   }
+
+  let units = argv.s ? argv.s : argv.units
 
   let url = argv.f ? argv.f : argv.file
   if (!url) {
@@ -164,10 +227,15 @@ function init () {
       } else {
         let bytesDiff = bytesRx - lastBytes
 
-        let elapsedSeconds = truncDec(elapsedTime / 1000, 3)
-        let bitrateBps = truncDec(bytesDiff / elapsedSeconds, 3)
-        console.log('bitrate (Bps):', bitrateBps)
+        let elapsedSeconds = elapsedTime / 1000
+        let bitrate = new Bitrate(bytesDiff * 8 / elapsedSeconds)
+        if (units) {
+          console.log(`bitrate (${units}):, ${bitrate.get(units)}`)
+        } else {
+          console.log('bitrate (Bps):', bitrate.getBps())
+        }
       }
+
       lastBytes = bytesRx
     })
   }, pollInterval)
