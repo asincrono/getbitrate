@@ -157,7 +157,8 @@ function getBytes (device, platform, callback) {
 }
 
 function truncDec (number, decimals) {
-  return Math.trunc(number * 10 * decimals) / (10 * decimals)
+  let shift = Math.pow(10, decimals)
+  return Math.trunc(number * shift) / (shift)
 }
 
 function startTransfer (url, user, pass) {
@@ -210,7 +211,7 @@ function init () {
   // -r --r -resource --resource the url we will test our speed with.
   let resource = argv.r ? argv.r : argv.resource
   if (!resource) {
-    throw new Error('You must supply a URL to test the speed.')
+    console.log('No transmission will be started, listing current bitrate values')
   }
 
   // -t --t -time --time every each seconds we check the bitrate.
@@ -250,6 +251,7 @@ function init () {
 
   let lastBytes = 0
 
+  console.log(`We are going to do ${maxPolls} readings each ${pollInterval / 1000} seconds`)
   let intervalId = setInterval(function () {
     getBytes(device, platform, (err, bytesRx, bytesTx) => {
       if (err) console.error(err)
@@ -292,12 +294,12 @@ function init () {
     })
   }, pollInterval)
 
-  if (childProcess) {
-    setTimeout(function () {
-      clearInterval(intervalId)
+  setTimeout(function () {
+    clearInterval(intervalId)
+    if (childProcess) {
       childProcess.kill('SIGKILL')
-    }, totalTime)
-  }
+    }
+  }, totalTime)
 }
 
 init()
