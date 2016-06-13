@@ -18,6 +18,67 @@ const CURL_ARGS = ['-s', '-o', '/dev/null', '-w', '"%{speed_download}"']
 
 const NET_IFACES = os.networkInterfaces()
 
+class Bitrate {
+  constructor (bps) {
+    this.bps = bps || 0
+  }
+
+  fromBps (Bps) {
+    return new Bitrate(Bps * 8)
+  }
+
+  fromKbps (Kbps) {
+    return new Bitrate(Kbps * 1000)
+  }
+
+  fromKBps (KBps) {
+    return new Bitrate(KBps * 8000)
+  }
+
+  fromMbps (Mbps) {
+    return new Bitrate(Mbps * 1000000)
+  }
+
+  fromMBps (MBps) {
+    return new Bitrate(MBps * 8000000)
+  }
+
+  getBps () {
+    return (this.bps / 8)
+  }
+
+  getKbps () {
+    return (this.bps / 1000)
+  }
+
+  getKBps () {
+    return (this.bps / 8000)
+  }
+
+  getMbps () {
+    return (this.bps / 1000000)
+  }
+
+  getMBps () {
+    return (this.bps / 8000000)
+  }
+
+  get (unit) {
+    switch (unit) {
+      case 'bps': return this.bps
+      case 'Bps': return this.getBps()
+      case 'Kbps': return this.getKbps()
+      case 'KBps': return this.getKBps()
+      case 'Mbps': return this.getMbps()
+      case 'MBps': return this.getMBps()
+      default: return this.bps
+    }
+  }
+  toString () {
+    return `${this.bps} b/s`
+  }
+}
+
 function cleanLines (lines) {
   let cleanLines = []
   let cleanLine
@@ -26,6 +87,12 @@ function cleanLines (lines) {
     cleanLines.push(cleanLine)
   })
   return cleanLines
+}
+
+function saveData (file, data) {
+  fs.appendFile(file, data, (err) => {
+    if (err) console.error(err)
+  })
 }
 
 function getBytes (device, platform, callback) {
@@ -93,67 +160,6 @@ function truncDec (number, decimals) {
   return Math.trunc(number * 10 * decimals) / (10 * decimals)
 }
 
-class Bitrate {
-  constructor (bps) {
-    this.bps = bps || 0
-  }
-
-  fromBps (Bps) {
-    return new Bitrate(Bps * 8)
-  }
-
-  fromKbps (Kbps) {
-    return new Bitrate(Kbps * 1000)
-  }
-
-  fromKBps (KBps) {
-    return new Bitrate(KBps * 8000)
-  }
-
-  fromMbps (Mbps) {
-    return new Bitrate(Mbps * 1000000)
-  }
-
-  fromMBps (MBps) {
-    return new Bitrate(MBps * 8000000)
-  }
-
-  getBps () {
-    return (this.bps / 8)
-  }
-
-  getKbps () {
-    return (this.bps / 1000)
-  }
-
-  getKBps () {
-    return (this.bps / 8000)
-  }
-
-  getMbps () {
-    return (this.bps / 1000000)
-  }
-
-  getMBps () {
-    return (this.bps / 8000000)
-  }
-
-  get (unit) {
-    switch (unit) {
-      case 'bps': return this.bps
-      case 'Bps': return this.getBps()
-      case 'Kbps': return this.getKbps()
-      case 'KBps': return this.getKBps()
-      case 'Mbps': return this.getMbps()
-      case 'MBps': return this.getMBps()
-      default: return this.bps
-    }
-  }
-  toString () {
-    return `${this.bps} b/s`
-  }
-}
-
 function startTransfer (url, user, pass) {
   let args = CURL_ARGS.slice()
   if (user) {
@@ -181,7 +187,6 @@ function startTransfer (url, user, pass) {
     }
   })
   childProcess.on('exit', (code, signal) => {
-    console.log('colde')
     console.log(`curl task ended by ${signal}`)
   })
   return childProcess
@@ -189,8 +194,12 @@ function startTransfer (url, user, pass) {
 
 function init () {
   // options: -d --device, -u --units, -r --resource, -t --time, -n --readings
-  // -p --precission
+  // -p --precission -a --autenticate
   let platform = os.platform()
+
+  // -o --output the file where to save the results.
+  let outputFile = argv.o ? argv.o : argv.output
+
   // -d --d -device --device
   let device = argv.d ? argv.d : argv.device
 
@@ -231,11 +240,16 @@ function init () {
   // -p --precission number of decimals to show.
   let precission = argv.p || argv.precission
 
-  let childProcess = startTransfer(resource, user, pass)
+  let childProcess
+  if (outputFile) {
+    childProcess = startTransfer(resource, user, pass)
+  }
+
   let timestamp = Date.now()
-  let totalTime = maxPolls * pollInterval + 500
+  let totalTime = (maxPolls + 1) * pollInterval + 500
 
   let lastBytes = 0
+
   let intervalId = setInterval(function () {
     getBytes(device, platform, (err, bytesRx, bytesTx) => {
       if (err) console.error(err)
@@ -268,16 +282,22 @@ function init () {
           }
           console.log('bitrate (Bps):', bitrateValue)
         }
+        if (outputFile) {
+          // dataToSave.push(`${timestamp} ${bytesRx} ${bitrate.get()}\n`)
+          // fs.appendFile(outputFile, `${timestamp} ${bytesRx} ${bitrate.get()}\n`)
+          saveData(outputFile, `${timestamp} ${bytesRx} ${bitrate.get()}\n`)
+        }
       }
-
       lastBytes = bytesRx
     })
   }, pollInterval)
 
-  setTimeout(function () {
-    clearInterval(intervalId)
-    childProcess.kill('SIGKILL')
-  }, totalTime)
+  if (childProcess) {
+    setTimeout(function () {
+      clearInterval(intervalId)
+      childProcess.kill('SIGKILL')
+    }, totalTime)
+  }
 }
 
 init()
