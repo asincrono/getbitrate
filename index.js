@@ -179,7 +179,13 @@ function init () {
 
   let lastBytes = 0
 
+  let outputFd
+  if (outputFile) {
+    outputFd = fs.openSync(outputFile, 'a+')
+  }
+
   console.log(`We are going to do ${maxPolls} readings each ${pollInterval / 1000} seconds`)
+  let dataText = ''
   let intervalId = setInterval(function () {
     getWirelessInfo((wirelessInfo) => {
       getBytes(device, platform, (err, bytesRx, bytesTx) => {
@@ -216,7 +222,20 @@ function init () {
           if (outputFile) {
             // dataToSave.push(`${timestamp} ${bytesRx} ${bitrate.get()}\n`)
             // fs.appendFile(outputFile, `${timestamp} ${bytesRx} ${bitrate.get()}\n`)
-            saveData(outputFile, `${timestamp} ${wirelessInfo.getLevel(device)} ${bytesRx} ${bitrate.get()}\n`)
+            // fs.write(
+            //   outputFd,
+            //   `${timestamp} ${wirelessInfo.getLevel(device)} ${bytesRx} ${bitrate.get()}\n`,
+            //   'utf8',
+            //   (err, written, string) => {
+            //     if (err) throw err
+            //   }
+            // )
+            fs.appendFile(outputFile,
+              `${timestamp} ${wirelessInfo.getLevel(device)} ${bytesRx} ${bitrate.get()}\n`,
+              'utf8',
+              (err) => {
+                if (err) throw err
+              })
           }
         }
         lastBytes = bytesRx
