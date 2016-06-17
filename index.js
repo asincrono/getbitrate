@@ -22,8 +22,6 @@ const CURL_ARGS = ['-s', '-o', '/dev/null', '-w', '"%{speed_download}"']
 
 const NET_IFACES = os.networkInterfaces()
 
-
-
 function saveData (file, data) {
   fs.appendFile(file, data, (err) => {
     if (err) console.error(err)
