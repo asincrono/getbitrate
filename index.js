@@ -1,8 +1,8 @@
 'use strict'
 
 const {cleanLines, truncDec} = require('./lib/utils.js')
-const {Bitrate} = require('./lib/bitrate.js')
-const {WirelessInfo, getWirelessInfo} = require('./lib/signalinfo.js')
+const Bitrate = require('./lib/bitrate.js')
+const {getWirelessInfo} = require('./lib/signalinfo.js')
 
 const minimist = require('minimist')
 
