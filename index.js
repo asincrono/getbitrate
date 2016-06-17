@@ -183,44 +183,46 @@ function init () {
 
   console.log(`We are going to do ${maxPolls} readings each ${pollInterval / 1000} seconds`)
   let intervalId = setInterval(function () {
-    getBytes(device, platform, (err, bytesRx, bytesTx) => {
-      if (err) console.error(err)
+    getWirelessInfo((wirelessInfo) => {
+      getBytes(device, platform, (err, bytesRx, bytesTx) => {
+        if (err) console.error(err)
 
-      let localTimestap = Date.now()
-      let elapsedTime = localTimestap - timestamp
-      timestamp = localTimestap
+        let localTimestap = Date.now()
+        let elapsedTime = localTimestap - timestamp
+        timestamp = localTimestap
 
-      console.log('elapsedTime:', truncDec(elapsedTime / 1000, 3))
+        console.log('elapsedTime:', truncDec(elapsedTime / 1000, 3))
 
-      if (lastBytes === 0) {
-        console.log('Not enough info to know the bitrate (two readings needed)')
-      } else {
-        let bytesDiff = bytesRx - lastBytes
-
-        let elapsedSeconds = elapsedTime / 1000
-
-        let bitrate = new Bitrate(bytesDiff * 8 / elapsedSeconds)
-        let bitrateValue
-        if (units) {
-          bitrateValue = bitrate.get(units)
-          if (precission) {
-            bitrateValue = truncDec(bitrateValue, precission)
-          }
-          console.log(`bitrate (${units}):, ${bitrateValue}`)
+        if (lastBytes === 0) {
+          console.log('Not enough info to know the bitrate (two readings needed)')
         } else {
-          let bitrateValue = bitrate.getBps()
-          if (precission) {
-            truncDec(bitrateValue, precission)
+          let bytesDiff = bytesRx - lastBytes
+
+          let elapsedSeconds = elapsedTime / 1000
+
+          let bitrate = new Bitrate(bytesDiff * 8 / elapsedSeconds)
+          let bitrateValue
+          if (units) {
+            bitrateValue = bitrate.get(units)
+            if (precission) {
+              bitrateValue = truncDec(bitrateValue, precission)
+            }
+            console.log(`bitrate (${units}):, ${bitrateValue}`)
+          } else {
+            let bitrateValue = bitrate.getBps()
+            if (precission) {
+              truncDec(bitrateValue, precission)
+            }
+            console.log('bitrate (Bps):', bitrateValue)
           }
-          console.log('bitrate (Bps):', bitrateValue)
+          if (outputFile) {
+            // dataToSave.push(`${timestamp} ${bytesRx} ${bitrate.get()}\n`)
+            // fs.appendFile(outputFile, `${timestamp} ${bytesRx} ${bitrate.get()}\n`)
+            saveData(outputFile, `${timestamp} ${wirelessInfo.getLevel(device)} ${bytesRx} ${bitrate.get()}\n`)
+          }
         }
-        if (outputFile) {
-          // dataToSave.push(`${timestamp} ${bytesRx} ${bitrate.get()}\n`)
-          // fs.appendFile(outputFile, `${timestamp} ${bytesRx} ${bitrate.get()}\n`)
-          saveData(outputFile, `${timestamp} ${bytesRx} ${bitrate.get()}\n`)
-        }
-      }
-      lastBytes = bytesRx
+        lastBytes = bytesRx
+      })
     })
   }, pollInterval)
 
@@ -232,7 +234,4 @@ function init () {
   }, totalTime)
 }
 
-getWirelessInfo((wirelessInfo) => {
-  console.log('wirelessInfo:', wirelessInfo)
-  console.log(wirelessInfo.toString())
-})
+init()
