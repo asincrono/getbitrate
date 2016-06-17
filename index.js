@@ -233,5 +233,6 @@ function init () {
 }
 
 getWirelessInfo((wirelessInfo) => {
+  console.log(wirelessInfo)
   console.log(wirelessInfo.toString())
 })
