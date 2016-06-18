@@ -30,7 +30,7 @@ function saveData (file, data) {
 
 function getBytes (device, platform, callback) {
   switch (platform) {
-    case 'linux':
+    case 'linux': {
       fs.readFile(PROC_NET_DEV_PATH, 'utf8', (err, data) => {
         if (err) {
           callback(err)
@@ -40,7 +40,7 @@ function getBytes (device, platform, callback) {
           // stupid lines begin with ' '
           lines = cleanLines(lines)
           // not anymore muohoohoo
-          let line = lines.filter((line, idx, arr) => {
+          let line = lines.filter((line) => {
             return line.startsWith(device)
           })[0]
 
@@ -55,19 +55,20 @@ function getBytes (device, platform, callback) {
         }
       })
       break
-    case 'darwin':
+    }
+    case 'darwin': {
       let args = DARWIN_NETSTAT_ARGS.slice()
       args.push(device)
-      execFile(DARWIN_NETSTAT_CMD, args, (err, stdout, stderr) => {
+      execFile(DARWIN_NETSTAT_CMD, args, (err, stdout) => {
         if (err) {
           callback(err)
         } else {
           let lines = stdout.split('\n')
-          let line = lines.filter((line, idx, arr) => {
+          let line = lines.filter((line) => {
             return line.startsWith(device)
           })[0]
 
-          let values = line.split(/\s+/).filter((value, idx, arr) => {
+          let values = line.split(/\s+/).filter((value) => {
             return value.length > 0
           })
           let bytesRx
@@ -84,6 +85,7 @@ function getBytes (device, platform, callback) {
         }
       })
       break
+    }
     default:
       callback()
   }
@@ -103,7 +105,7 @@ function startTransfer (url, user, pass) {
 
   let timestamp = Date.now()
 
-  let childProcess = execFile(CURL_CMD, args, (err, stdout, stderr) => {
+  let childProcess = execFile(CURL_CMD, args, (err, stdout) => {
     if (err) {
       // nothing to see here as it's ok to get an error when proces killed.
     } else {
@@ -179,16 +181,11 @@ function init () {
 
   let lastBytes = 0
 
-  let outputFd
-  if (outputFile) {
-    outputFd = fs.openSync(outputFile, 'a+')
-  }
-
   console.log(`We are going to do ${maxPolls} readings each ${pollInterval / 1000} seconds`)
-  let dataText = ''
+
   let intervalId = setInterval(function () {
     getWirelessInfo((wirelessInfo) => {
-      getBytes(device, platform, (err, bytesRx, bytesTx) => {
+      getBytes(device, platform, (err, bytesRx) => {
         if (err) console.error(err)
 
         let localTimestap = Date.now()
