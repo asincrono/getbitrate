@@ -114,7 +114,9 @@ function init () {
     executor = startTransfer(options.resource, user, pass)
   }
 
-  let totalTime = options.pollInterval * 1000 * options.maxPolls + options.pollInterval / 2
+  let pollIntervalMillis = options.pollInterval * 1000
+
+  let totalTime = pollIntervalMillis * options.maxPolls + options.pollInterval / 2
   console.log('totalTime:', totalTime)
 
   let timestamp = Date.now()
@@ -192,7 +194,7 @@ function init () {
   console.log('Option.sync on?:', options.sync)
 
   let intervalFunc = options.sync ? getNetInfoSync : getNetInfo
-  let intervalId = setInterval(intervalFunc, options.pollInterval)
+  let intervalId = setInterval(intervalFunc, pollIntervalMillis)
 
   setTimeout(function () {
     clearInterval(intervalId)
