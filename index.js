@@ -1,7 +1,7 @@
 'use strict'
-const {cleanLines, truncDec} = require('./lib/utils.js')
+
 const Bitrate = require('./lib/bitrate.js')
-const {getWirelessInfo} = require('./lib/signalinfo.js')
+const {getWirelessInfo, getWirelessInfoSync, getBytes, getBytesSync} = require('./lib/netinfo.js')
 
 const minimist = require('minimist')
 
@@ -11,83 +11,8 @@ const {execFile} = require('child_process')
 const fs = require('fs')
 const os = require('os')
 
-const PROC_NET_DEV_PATH = '/proc/net/dev'
-const DARWIN_NETSTAT_CMD = 'netstat'
-const DARWIN_NETSTAT_ARGS = ['-ib', '-I']
 const CURL_CMD = 'curl'
 const CURL_ARGS = ['-s', '-o', '/dev/null', '-w', '"%{speed_download}"']
-
-function getBytes (device, platform, callback) {
-  switch (platform) {
-    case 'linux': {
-      fs.readFile(PROC_NET_DEV_PATH, 'utf8', (err, data) => {
-        if (err) {
-          callback(err)
-        } else {
-          // parse the data
-          let lines = data.split('\n')
-          // stupid lines begin with ' '
-          lines = cleanLines(lines)
-          // not anymore muohoohoo
-          let line = lines.filter((line) => {
-            return line.startsWith(`${device}:`)
-          })[0]
-
-          if (line) {
-            let values = line.split(/\s+/)
-            let bytesRx = values[1]
-            let bytesTx = values[9]
-            callback(null, parseInt(bytesRx, 10), parseInt(bytesTx, 10))
-          } else {
-            callback(new Error(`"${device}" not found.`))
-          }
-        }
-      })
-      break
-    }
-    case 'darwin': {
-      let args = DARWIN_NETSTAT_ARGS.slice()
-      args.push(device)
-      execFile(DARWIN_NETSTAT_CMD, args, (err, stdout) => {
-        if (err) {
-          callback(err)
-        } else {
-          let lines = stdout.split('\n')
-          let line = lines.filter(line => line.startsWith(device))[0]
-
-          let values = line.split(/\s+/).filter((value) => {
-            return value.length > 0
-          })
-          let bytesRx
-          let bytesTx
-          if (values.length < 11) {
-            // We are missning address filed, Ibytes at column 6 (instead of 7)
-            bytesRx = values[5]
-            bytesTx = values[8]
-          } else {
-            bytesRx = values[6]
-            bytesTx = values[9]
-          }
-          callback(err, parseInt(bytesRx, 10), parseInt(bytesTx, 10))
-        }
-      })
-      break
-    }
-    default:
-      callback()
-  }
-}
-
-function getBytesSync(device) {
-  let data = fs.readFileSync(PROC_NET_DEV_PATH, 'utf8')
-
-  let line = data.split('\n').filter(line => line.includes(`${device}:`))[0]
-  let values = line.split(/\s+/).filter(value => value.length > 0)
-  let bytesRx = values[1]
-  let bytesTx = values[9]
-
-  return [parseInt(bytesRx, 10), parseInt(bytesTx, 10)]
-}
 
 class Executor {
   constructor (cmd, args) {
@@ -164,7 +89,7 @@ function getOptions () {
   if (!options.device) {
     options.device = getDefaultIface()
   }
-
+  options.sync = argv.sync
   options.outputFile = argv.o || argv.output
   options.resource = argv.r || argv.resource
   options.pollInterval = argv.t || argv.time || 1
@@ -193,7 +118,8 @@ function init () {
 
   let timestamp = Date.now()
   let lastBytes
-  let intervalId = setInterval(function () {
+
+  function getNetInfo () {
     getWirelessInfo((wirelessInfo) => {
       getBytes(options.device, options.platform, (err, bytesRx) => {
         if (err) console.error(err)
@@ -218,7 +144,7 @@ function init () {
 
           let bitrate = new Bitrate(bytesDiff * 8 / elapsedSeconds)
           let bitrateValue = bitrate.get(options.units)
-          console.log(`bitrate (${options.units}):, ${bitrateValue.toFixed(options.precission)}`)
+          console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
 
           if (options.outputFile) {
             fs.appendFile(options.outputFile,
@@ -232,7 +158,32 @@ function init () {
         lastBytes = bytesRx
       })
     })
-  }, options.pollInterval)
+  }
+
+  function getNetInfoSync () {
+    let wirelessInfo = getWirelessInfoSync(options.device)
+    let bytesRx
+
+    [bytesRx] = getBytesSync(options.device)
+    let localTimestamp = Date.now()
+    if (lastBytes) {
+      let elapsedTime = localTimestamp - timestamp
+      let elapsedSeconds = elapsedTime / 1000
+      let bytesDiff = bytesRx - lastBytes
+
+      if (bytesDiff < 0) {
+        bytesDiff = Math.pow(2, 32) - bytesDiff
+      }
+
+      let bitrate = Bitrate.fromBps(bytesDiff / elapsedSeconds)
+      let bitrateValue = bitrate.get(options.units)
+      console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
+      console.log(`signal level: ${wirelessInfo.getLevel(options.device)}`)
+    }
+  }
+
+  let intervalFunc = options.sync ? getNetInfoSync : getNetInfo
+  let intervalId = setInterval(intervalFunc, options.pollInterval)
 
   setTimeout(function () {
     clearInterval(intervalId)
@@ -242,8 +193,4 @@ function init () {
   }, totalTime)
 }
 
-let bytesRx
-let bytesTx
-[bytesTx, bytesRx] = getBytesSync('wlan0')
-
-console.log(`bytes rx: ${bytesRx}, bytes tx: ${bytesTx}.`)
+init()
