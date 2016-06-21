@@ -115,6 +115,7 @@ function init () {
   }
 
   let totalTime = options.pollInterval * options.maxPolls + options.pollInterval / 2
+  console.log('totalTime:', totalTime)
 
   let timestamp = Date.now()
   let lastBytes
@@ -179,8 +180,15 @@ function init () {
       let bitrateValue = bitrate.get(options.units)
       console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
       console.log(`signal level: ${wirelessInfo.getLevel(options.device)}`)
+      if (options.outputFile) {
+        fs.appendFileSync(options.outputFile,
+          `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get()}\n`,
+          'utf8')
+      }
     }
   }
+
+  console.log('Option.sync on?:', options.sync)
 
   let intervalFunc = options.sync ? getNetInfoSync : getNetInfo
   let intervalId = setInterval(intervalFunc, options.pollInterval)
