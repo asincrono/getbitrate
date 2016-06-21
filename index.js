@@ -114,7 +114,7 @@ function init () {
     executor = startTransfer(options.resource, user, pass)
   }
 
-  let totalTime = options.pollInterval * options.maxPolls + options.pollInterval / 2
+  let totalTime = options.pollInterval * 1000 * options.maxPolls + options.pollInterval / 2
   console.log('totalTime:', totalTime)
 
   let timestamp = Date.now()
@@ -162,6 +162,7 @@ function init () {
   }
 
   function getNetInfoSync () {
+    console.log('doing things, going places.')
     let wirelessInfo = getWirelessInfoSync(options.device)
     let bytesRx
 
