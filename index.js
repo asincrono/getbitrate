@@ -1,8 +1,4 @@
 'use strict'
-
-/* eslint complexity off */
-
-
 const {cleanLines, truncDec} = require('./lib/utils.js')
 const Bitrate = require('./lib/bitrate.js')
 const {getWirelessInfo} = require('./lib/signalinfo.js')
@@ -11,7 +7,7 @@ const minimist = require('minimist')
 
 const argv = minimist(process.argv.slice(2))
 
-const { execFile } = require('child_process')
+const {execFile} = require('child_process')
 const fs = require('fs')
 const os = require('os')
 
@@ -20,8 +16,6 @@ const DARWIN_NETSTAT_CMD = 'netstat'
 const DARWIN_NETSTAT_ARGS = ['-ib', '-I']
 const CURL_CMD = 'curl'
 const CURL_ARGS = ['-s', '-o', '/dev/null', '-w', '"%{speed_download}"']
-
-const NET_IFACES = os.networkInterfaces()
 
 function getBytes (device, platform, callback) {
   switch (platform) {
@@ -36,7 +30,7 @@ function getBytes (device, platform, callback) {
           lines = cleanLines(lines)
           // not anymore muohoohoo
           let line = lines.filter((line) => {
-            return line.startsWith(device)
+            return line.startsWith(`${device}:`)
           })[0]
 
           if (line) {
@@ -59,9 +53,7 @@ function getBytes (device, platform, callback) {
           callback(err)
         } else {
           let lines = stdout.split('\n')
-          let line = lines.filter((line) => {
-            return line.startsWith(device)
-          })[0]
+          let line = lines.filter(line => line.startsWith(device))[0]
 
           let values = line.split(/\s+/).filter((value) => {
             return value.length > 0
@@ -84,6 +76,17 @@ function getBytes (device, platform, callback) {
     default:
       callback()
   }
+}
+
+function getBytesSync(device) {
+  let data = fs.readFileSync(PROC_NET_DEV_PATH, 'utf8')
+
+  let line = data.split('\n').filter(line => line.includes(`${device}:`))[0]
+  let values = line.split(/\s+/).filter(value => value.length > 0)
+  let bytesRx = values[1]
+  let bytesTx = values[9]
+
+  return [parseInt(bytesRx, 10), parseInt(bytesTx, 10)]
 }
 
 class Executor {
@@ -143,18 +146,33 @@ function startTransfer (url, user, pass) {
   return executor
 }
 
-function getOptions () {
-  return {
-    platform: os.platform(),
-    outputFile: argv.o || argv.output,
-    device: argv.d || argv.device,
-    resource: argv.r || argv.resource,
-    pollInterval: argv.t || argv.time || 1,
-    maxPolls: argv.n || argv.number || 10,
-    userPass: argv.a || argv.autenticate,
-    units: argv.u || argv.units || 'Mbps',
-    precission: argv.p || argv.precission || 3
+function getDefaultIface () {
+  let ifaces = os.networkInterfaces()
+  for (let iface in ifaces) {
+    if (!ifaces[iface].internal) {
+      return iface
+    }
   }
+  return null
+}
+
+function getOptions () {
+  let options = {}
+  options.platform = os.platform()
+
+  options.device = argv.d || argv.device
+  if (!options.device) {
+    options.device = getDefaultIface()
+  }
+
+  options.outputFile = argv.o || argv.output
+  options.resource = argv.r || argv.resource
+  options.pollInterval = argv.t || argv.time || 1
+  options.maxPolls = argv.n || argv.number || 10
+  options.userPass = argv.a || argv.autenticate
+  options.units = argv.u || argv.units || 'Mbps'
+  options.precission = argv.p || argv.precission || 3
+  return options
 }
 
 function init () {
@@ -171,6 +189,8 @@ function init () {
     executor = startTransfer(options.resource, user, pass)
   }
 
+  let totalTime = options.pollInterval * options.maxPolls + options.pollInterval / 2
+
   let timestamp = Date.now()
   let lastBytes
   let intervalId = setInterval(function () {
@@ -182,7 +202,7 @@ function init () {
         let elapsedTime = localTimestap - timestamp
         timestamp = localTimestap
 
-        console.log('elapsedTime:', truncDec(elapsedTime / 1000, 3))
+        console.log('elapsedTime:', (elapsedTime / 1000).toFixed(3))
 
         if (lastBytes === 0) {
           console.log('Not enough info to know the bitrate (two readings needed)')
@@ -197,31 +217,10 @@ function init () {
           let elapsedSeconds = elapsedTime / 1000
 
           let bitrate = new Bitrate(bytesDiff * 8 / elapsedSeconds)
-          let bitrateValue
-          if (options.units) {
-            bitrateValue = bitrate.get(options.units)
-            if (options.precission) {
-              bitrateValue = truncDec(bitrateValue, options.precission)
-            }
-            console.log(`bitrate (${options.units}):, ${bitrateValue}`)
-          } else {
-            let bitrateValue = bitrate.getBps()
-            if (options.precission) {
-              truncDec(bitrateValue, options.precission)
-            }
-            console.log('bitrate (Bps):', bitrateValue)
-          }
+          let bitrateValue = bitrate.get(options.units)
+          console.log(`bitrate (${options.units}):, ${bitrateValue.toFixed(options.precission)}`)
+
           if (options.outputFile) {
-            // dataToSave.push(`${timestamp} ${bytesRx} ${bitrate.get()}\n`)
-            // fs.appendFile(outputFile, `${timestamp} ${bytesRx} ${bitrate.get()}\n`)
-            // fs.write(
-            //   outputFd,
-            //   `${timestamp} ${wirelessInfo.getLevel(device)} ${bytesRx} ${bitrate.get()}\n`,
-            //   'utf8',
-            //   (err, written, string) => {
-            //     if (err) throw err
-            //   }
-            // )
             fs.appendFile(options.outputFile,
               `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get()}\n`,
               'utf8',
@@ -243,6 +242,8 @@ function init () {
   }, totalTime)
 }
 
-for (let iface in NET_IFACES) {
-  console.log('iface:', iface)
-}
+let bytesRx
+let bytesTx
+[bytesTx, bytesRx] = getBytesSync('wlan0')
+
+console.log(`bytes rx: ${bytesRx}, bytes tx: ${bytesTx}.`)
