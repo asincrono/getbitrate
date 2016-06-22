@@ -164,7 +164,6 @@ function init () {
   }
 
   function getNetInfoSync () {
-    console.log('doing things, going places.')
     let wirelessInfo = getWirelessInfoSync(options.device)
     let bytesRx
 
@@ -181,6 +180,7 @@ function init () {
 
       let bitrate = Bitrate.fromBps(bytesDiff / elapsedSeconds)
       let bitrateValue = bitrate.get(options.units)
+      console.log(`Time elapsed: ${elapsedTime}`)
       console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
       console.log(`signal level: ${wirelessInfo.getLevel(options.device)}`)
       if (options.outputFile) {
@@ -188,7 +188,10 @@ function init () {
           `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get()}\n`,
           'utf8')
       }
+    } else {
+      console.log('Not enough info to know the bitrate (two readings needed)')
     }
+    lastBytes = bytesRx
   }
 
   console.log('Option.sync on?:', options.sync)
