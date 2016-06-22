@@ -171,6 +171,8 @@ function init () {
     let localTimestamp = Date.now()
     if (lastBytes) {
       let elapsedTime = localTimestamp - timestamp
+      timestamp = localTimestamp
+
       let elapsedSeconds = elapsedTime / 1000
       let bytesDiff = bytesRx - lastBytes
 
@@ -180,7 +182,7 @@ function init () {
 
       let bitrate = Bitrate.fromBps(bytesDiff / elapsedSeconds)
       let bitrateValue = bitrate.get(options.units)
-      console.log(`Time elapsed: ${elapsedTime}`)
+      console.log(`Time elapsed: ${elapsedSeconds}`)
       console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
       console.log(`signal level: ${wirelessInfo.getLevel(options.device)}`)
       if (options.outputFile) {
