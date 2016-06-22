@@ -1,6 +1,6 @@
 'use strict'
 
-const Bitrate = require('./lib/bitrate.js')
+const {Bitrate} = require('./lib/bitrate.js')
 const {getWirelessInfo, getWirelessInfoSync, getBytes, getBytesSync} = require('./lib/netinfo.js')
 
 const minimist = require('minimist')
