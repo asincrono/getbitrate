@@ -25,15 +25,16 @@ class Executor {
     console.log(`"${this.cmd}" task ended.`)
     if (err) {
       console.error('Error:', err)
+    } else {
+      if (stdout) {
+        console.log(`${this.cmd} stdout: ${stdout}`)
+      }
+      if (stderr) {
+        console.log(`${this.cmd} stderr: ${stderr}`)
+      }
+      console.log(`Restarting "${this.cmd}"`)
+      this.run()
     }
-    if (stdout) {
-      console.log(`${this.cmd} stdout: ${stdout}`)
-    }
-    if (stderr) {
-      console.log(`${this.cmd} stderr: ${stderr}`)
-    }
-    console.log(`Restarting "${this.cmd}"`)
-    this.run()
   }
 
   run () {
@@ -65,7 +66,7 @@ function startTransfer (url, user, pass) {
       args.push('-u')
       args.push(`${user}:${pass}`)
     } else {
-      throw new Error('If user supplied, passworrd required too.')
+      throw new Error('If user login supplied, password required too.')
     }
   }
 
