@@ -1,3 +1,4 @@
+/* eslint no-process-exit: 1 */
 'use strict'
 
 const {Bitrate} = require('./lib/bitrate.js')
@@ -21,17 +22,22 @@ class Executor {
   }
 
   callback (err, stdout, stderr) {
-    if (err) throw err
+    console.log(`"${this.cmd}" task ended.`)
+    if (err) {
+      console.error('Error:', err)
+    }
     if (stdout) {
       console.log(`${this.cmd} stdout: ${stdout}`)
     }
     if (stderr) {
       console.log(`${this.cmd} stderr: ${stderr}`)
     }
+    console.log(`Restarting "${this.cmd}"`)
     this.run()
   }
 
   run () {
+    console.log(`Running: ${this.cmd} ${this.args}`)
     this.childProcess = execFile(this.cmd, this.args, this.callback.bind(this))
     this.childProcess.on('exit', (code, signal) => {
       if (code) console.log('Exit code:', code)
@@ -122,6 +128,14 @@ function init () {
   let timestamp = Date.now()
   let lastBytes
 
+  process.on('SIGINT', () => {
+    console.log('User manual ending (Ctrl + c)')
+    if (executor) {
+      executor.kill()
+    }
+    process.exit()
+  })
+
   function getNetInfo () {
     getWirelessInfo((wirelessInfo) => {
       getBytes(options.device, options.platform, (err, bytesRx) => {
@@ -131,9 +145,7 @@ function init () {
         let elapsedTime = localTimestap - timestamp
         timestamp = localTimestap
 
-        console.log('elapsedTime:', (elapsedTime / 1000).toFixed(3))
-
-        if (lastBytes === 0) {
+        if (lastBytes) {
           console.log('Not enough info to know the bitrate (two readings needed)')
         } else {
           let bytesDiff = bytesRx - lastBytes
@@ -147,7 +159,9 @@ function init () {
 
           let bitrate = new Bitrate(bytesDiff * 8 / elapsedSeconds)
           let bitrateValue = bitrate.get(options.units)
+          console.log(`Time elapsed: ${elapsedSeconds.toFixed(3)} s`)
           console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
+          console.log(`signal level ${wirelessInfo.getLevel(options.device)}`)
 
           if (options.outputFile) {
             fs.appendFile(options.outputFile,
@@ -182,12 +196,12 @@ function init () {
 
       let bitrate = Bitrate.fromBps(bytesDiff / elapsedSeconds)
       let bitrateValue = bitrate.get(options.units)
-      console.log(`Time elapsed: ${elapsedSeconds}`)
+      console.log(`Time elapsed: ${elapsedSeconds} s`)
       console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
       console.log(`signal level: ${wirelessInfo.getLevel(options.device)}`)
       if (options.outputFile) {
         fs.appendFileSync(options.outputFile,
-          `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get()}\n`,
+          `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`,
           'utf8')
       }
     } else {
@@ -204,6 +218,7 @@ function init () {
   setTimeout(function () {
     clearInterval(intervalId)
     if (executor) {
+      console.log('Time to say goodbye: Killing the executor.')
       executor.kill()
     }
   }, totalTime)
