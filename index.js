@@ -147,10 +147,7 @@ function init () {
         timestamp = localTimestap
 
         if (lastBytes) {
-          console.log('Not enough info to know the bitrate (two readings needed)')
-        } else {
           let bytesDiff = bytesRx - lastBytes
-
           // rx bytes counter has been restarted ("only" happens in 32 bit arch.)
           if (bytesDiff < 0) {
             bytesDiff = Math.pow(2, 32) - bytesDiff
@@ -172,6 +169,8 @@ function init () {
                 if (err) throw err
               })
           }
+        } else {
+          console.log('Not enough info to know the bitrate (two readings needed)')
         }
         lastBytes = bytesRx
       })
