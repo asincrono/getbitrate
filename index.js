@@ -223,7 +223,7 @@ function init () {
     clearInterval(intervalId)
 
     if (options.outputFile) {
-      fs.appendFile(options.outputFile, outputBuff, 'utf8', (err) => {
+      fs.appendFile(options.outputFile, outputBuff, (err) => {
         if (err) throw err
       })
     }
