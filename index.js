@@ -111,7 +111,8 @@ function init () {
   let options = getOptions()
   if (!options.device) throw new Error('You need to supply a device: -e <device_id>')
 
-  let outputBuff = Buffer.alloc(options.maxPolls * 128, 'utf8') // 128 chars per line.
+  let outputBuff = Buffer.alloc(options.maxPolls * 128) // 128 chars per line.
+  let buffOffset = 0
   let executor
   if (options.resource) {
     let user
@@ -163,7 +164,11 @@ function init () {
           console.log(`signal level ${wirelessInfo.getLevel(options.device)}`)
 
           /* Save output to memory*/
-          outputBuff.write(`${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`)
+          buffOffset += outputBuff.write(
+            `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`,
+            buffOffset,
+            'utf8'
+          )
           // if (options.outputFile) {
           //   fs.appendFile(options.outputFile,
           //     `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get()}\n`,
@@ -202,7 +207,11 @@ function init () {
       console.log(`Time elapsed: ${elapsedSeconds} s`)
       console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
       console.log(`signal level: ${wirelessInfo.getLevel(options.device)}`)
-      outputBuff.write(`${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`)
+      buffOffset += outputBuff.write(
+        `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`,
+        buffOffset,
+        'utf8'
+      )
       // if (options.outputFile) {
       //   fs.appendFileSync(options.outputFile,
       //     `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`,
