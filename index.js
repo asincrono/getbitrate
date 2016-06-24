@@ -111,6 +111,7 @@ function init () {
   let options = getOptions()
   if (!options.device) throw new Error('You need to supply a device: -e <device_id>')
 
+  let outputBuff = Buffer.alloc(options.maxPolls * 128, 'utf8') // 128 chars per line.
   let executor
   if (options.resource) {
     let user
@@ -161,14 +162,16 @@ function init () {
           console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
           console.log(`signal level ${wirelessInfo.getLevel(options.device)}`)
 
-          if (options.outputFile) {
-            fs.appendFile(options.outputFile,
-              `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get()}\n`,
-              'utf8',
-              (err) => {
-                if (err) throw err
-              })
-          }
+          /* Save output to memory*/
+          outputBuff.write(`${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`)
+          // if (options.outputFile) {
+          //   fs.appendFile(options.outputFile,
+          //     `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get()}\n`,
+          //     'utf8',
+          //     (err) => {
+          //       if (err) throw err
+          //     })
+          // }
         } else {
           console.log('Not enough info to know the bitrate (two readings needed)')
         }
@@ -199,11 +202,12 @@ function init () {
       console.log(`Time elapsed: ${elapsedSeconds} s`)
       console.log(`bitrate (${options.units}): ${bitrateValue.toFixed(options.precission)}`)
       console.log(`signal level: ${wirelessInfo.getLevel(options.device)}`)
-      if (options.outputFile) {
-        fs.appendFileSync(options.outputFile,
-          `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`,
-          'utf8')
-      }
+      outputBuff.write(`${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`)
+      // if (options.outputFile) {
+      //   fs.appendFileSync(options.outputFile,
+      //     `${timestamp} ${wirelessInfo.getLevel(options.device)} ${bytesRx} ${bitrate.get(options.units).toFixed(options.precission)}\n`,
+      //     'utf8')
+      // }
     } else {
       console.log('Not enough info to know the bitrate (two readings needed)')
     }
@@ -217,6 +221,13 @@ function init () {
 
   setTimeout(function () {
     clearInterval(intervalId)
+
+    if (options.outputFile) {
+      fs.appendFile(options.outputFile, outputBuff, 'utf8', (err) => {
+        if (err) throw err
+      })
+    }
+
     if (executor) {
       console.log('Time to say goodbye: Killing the executor.')
       executor.kill()
